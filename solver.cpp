@@ -7,7 +7,8 @@
 #include <utility>
 #include <algorithm>
 #include <memory>
-
+#include <unordered_set>
+#include <string>
 
 typedef std::pair<std::tuple<int, int, bool>, std::tuple<int, int, bool>> Node_State;
 typedef std::tuple<int, int, bool> Shore; //CHICKENS, WOLVES AND BOAT IN THAT ORDER
@@ -53,6 +54,11 @@ int get_num_wolves(Shore shore){
     return std::get<1>(shore);
 }
 
+std::string toString(Node_State* state){
+    return std::to_string(std::get<0>(state->first)) + std::to_string(std::get<1>(state->first)) + std::to_string(std::get<2>(state->first)) 
+    + std::to_string(std::get<0>(state->second)) + std::to_string(std::get<1>(state->second)) + std::to_string(std::get<2>(state->second));
+}
+
 bool is_valid(Node_State* state){
 
     Shore leftShore = state->first;
@@ -66,6 +72,13 @@ bool is_valid(Node_State* state){
         return true;
 }
 
+bool already_visited(Node_State* state, std::unordered_set<std::string>* visited){
+    if(visited->find(toString(state)) == visited->end())
+        return false;
+    else
+        return true;
+}
+
 bool has_boat(Shore shore){
     return std::get<2>(shore);
 }
@@ -73,7 +86,6 @@ bool has_boat(Shore shore){
 void print_state(Node_State* state){
     std::cout << "Left bank: " << std::get<0>(state->first) << " " << std::get<1>(state->first) << " " << std::get<2>(state->first) << "\n"; 
     std::cout << "Right bank: " << std::get<0>(state->second) << " " << std::get<1>(state->second) << " " << std::get<2>(state->second) << "\n"; 
-
 }
 
 //moves n chickens. returns the new state.
@@ -149,11 +161,16 @@ that checks if a move is valid before adding it to the vector of children
 for the current parent node.
 */
 //takes a node and gives it children that are valid (at most 5 children). children are NODES.Nodes contain a parent, children, and state.
-void expand_node(Node* node){
+void expand_node(Node* node, std::unordered_set<std::string>* visited){
     Node_State currentState = node->state;
     std::vector<Node*> children();
     Shore currentShore; //tuple of int, int and bool (typedef'd)
+    //add the state as a string to the unordered set
+    visited->insert(toString(&currentState));
+    /*std::unordered_set<std::string>::iterator itr;
 
+    for (itr = visited->begin(); itr != visited->end(); itr++)
+        std::cout << (*itr) << std::endl;*/
     //determine where the boat is
     if(std::get<2>(currentState.first) == 1)
         currentShore = currentState.first;
@@ -161,47 +178,43 @@ void expand_node(Node* node){
         currentShore = currentState.second;
     
     //start generating possible states and checking for validity before inserting.
+
     //take 1 chicken
     Node_State state1 = move_chickens(&currentState, 1);
-    //print_state(&state1);
-    if(is_valid(&state1)){
-        std::cout << "checked if valid\n";
+    if(is_valid(&state1) && !already_visited(&state1, visited))
         node->children.push_back(create_Node(node, &state1));
-    }
+
     currentState = node->state; //reset state to current
     //take 2 chickens
     Node_State state2 = move_chickens(&currentState, 2);
-
-    if(is_valid(&state2))
+    if(is_valid(&state2) && !already_visited(&state2, visited))
         node->children.push_back(create_Node(node, &state2));
-    
+
     currentState = node->state;
     //take 1 wolf and 1 chicken
     Node_State state3 = move_chicken_and_wolf(&currentState);
-    if(is_valid(&state3))
+    if(is_valid(&state3) && !already_visited(&state3, visited))
         node->children.push_back(create_Node(node, &state3));
     
     currentState = node->state;
     //take 1 wolf
     Node_State state4 = move_wolves(&currentState, 1);
-    //print_state(&state4);
-    if(is_valid(&state4))
+    if(is_valid(&state4) && !already_visited(&state4, visited))
         node->children.push_back(create_Node(node, &state4));
     
     currentState = node->state;
-
+    //take 2 wolves
     Node_State state5 = move_wolves(&currentState, 2);
-    if(is_valid(&state5))
+    if(is_valid(&state5) && !already_visited(&state5, visited))
         node->children.push_back(create_Node(node, &state5));
     
     currentState = node->state;
-}
+    }
 
 //TODO: implement this lol
 void bfs(Node* root){
     std::queue<Node*> queue;
 }
-
 
 
 int main(int argc, char* argv[]) {
@@ -214,22 +227,24 @@ int main(int argc, char* argv[]) {
     /*for(int i = 0; i < values.size(); i++){
         cout << values.at(i) << "\n";
     }*/
-    std::tuple<int, int, bool> left_bank = std::make_tuple(values.at(0), values.at(1), !!values.at(2));
-    std::tuple<int, int, bool> right_bank = std::make_tuple(values.at(3), values.at(4), !!values.at(5));
+    Shore left_bank = std::make_tuple(values.at(0), values.at(1), !!values.at(2));
+    Shore right_bank = std::make_tuple(values.at(3), values.at(4), !!values.at(5));
     
-    std::pair<std::tuple<int, int, bool>, std::tuple<int, int, bool>> initial_state; 
+    Node_State initial_state; 
     initial_state.first = left_bank;
     initial_state.second = right_bank;
 
+    std::unordered_set<std::string> visited;
+
     Node* root = new Node{nullptr, std::vector<Node*>(), initial_state};
-    expand_node(root);    
+    expand_node(root, &visited);    
     
     for(int i = 0; i < root->children.size(); i++){
         print_state(&(root->children.at(i)->state));
     }
-
+    
     Node* newRoot = root->children.at(0);
-    expand_node(newRoot);
+    expand_node(newRoot, &visited);
 
     std::cout << "new root states:\n";
     for(int i = 0; i < newRoot->children.size(); i++){
