@@ -10,7 +10,7 @@
 #include <unordered_set>
 #include <string>
 
-typedef std::pair<std::tuple<int, int, bool>, std::tuple<int, int, bool>> Node_State;
+typedef std::pair<std::tuple<int, int, bool>, std::tuple<int, int, bool>> Node_State; //LEFT AND RIGHT SHORES IN THAT ORDER
 typedef std::tuple<int, int, bool> Shore; //CHICKENS, WOLVES AND BOAT IN THAT ORDER
 typedef struct Node Node;
 
@@ -104,7 +104,6 @@ Node_State move_chickens(Node_State* state, int n){
         std::get<0>(state->first) += n;
     }
 
-    
     return *state;
 }
 
@@ -211,10 +210,72 @@ void expand_node(Node* node, std::unordered_set<std::string>* visited){
     currentState = node->state;
     }
 
+bool is_win_state(Node_State* state){
+    //if there's nothing left on the right shore, then win
+    if(get_num_wolves(state->second) == 0 && get_num_chickens(state->second) == 0)
+        return true;
+    else
+        return false; 
+}
+
+//recursively print out the win path (starting from winning node and printing the parents of each of parent recursively)
+void print_win_path(Node* node){
+    if(node->parent != nullptr){
+        print_win_path(node->parent);
+    }
+    print_state(&(node->state));
+}
 //TODO: implement this lol
 void bfs(Node* root){
-    std::queue<Node*> queue;
+    std::unordered_set<std::string> visited; //initialize hash table
+    std::queue<Node*> queue; //initialize queue
+    if(is_win_state(&(root->state))){
+        std::cout << "win\n";
+        return;
+    }
+    
+    expand_node(root, &visited);
+    for(int i = 0; i < root->children.size(); i++){
+        queue.push(root->children.at(i));
+    }
+
+    while(queue.size() != 0){
+        print_state(&(queue.front()->state));
+
+        if(is_win_state(&(queue.front()->state))){
+            std::cout << "win\n";
+            std::cout << "WIN PATH:\n";
+            Node* winNode = queue.front();
+            /*while(winNode != nullptr){
+                std::cout << "-------------\n";
+                print_state(&(winNode->state));
+                winNode = winNode->parent;
+            }*/
+            print_win_path(winNode);
+            return;
+        }
+        expand_node(queue.front(), &visited);
+        for(int i = 0; i < queue.front()->children.size(); i++){
+            queue.push(queue.front()->children.at(i));
+        }
+        queue.pop();
+    }
+    std::cout << "lose\n";
+
 }
+/*
+    for(int i = 0; i < root->children.size(); i++){
+    print_state(&(root->children.at(i)->state));
+    }
+    
+    Node* newRoot = root->children.at(0);
+    expand_node(newRoot, &visited);
+
+    std::cout << "new root states:\n";
+    for(int i = 0; i < newRoot->children.size(); i++){
+        print_state(&(newRoot->children.at(i)->state));
+    }
+*/
 
 
 int main(int argc, char* argv[]) {
@@ -234,22 +295,12 @@ int main(int argc, char* argv[]) {
     initial_state.first = left_bank;
     initial_state.second = right_bank;
 
-    std::unordered_set<std::string> visited;
+    //std::unordered_set<std::string> visited;
 
     Node* root = new Node{nullptr, std::vector<Node*>(), initial_state};
-    expand_node(root, &visited);    
-    
-    for(int i = 0; i < root->children.size(); i++){
-        print_state(&(root->children.at(i)->state));
-    }
-    
-    Node* newRoot = root->children.at(0);
-    expand_node(newRoot, &visited);
+    //expand_node(root, &visited);
+    bfs(root);
 
-    std::cout << "new root states:\n";
-    for(int i = 0; i < newRoot->children.size(); i++){
-        print_state(&(newRoot->children.at(i)->state));
-    }
 
     //for different modes
     std::string mode = argv[3];
