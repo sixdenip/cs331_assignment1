@@ -9,6 +9,8 @@
 #include <memory>
 #include <unordered_set>
 #include <string>
+#include <stack>
+#include <unistd.h>
 
 typedef std::pair<std::tuple<int, int, bool>, std::tuple<int, int, bool>> Node_State; //LEFT AND RIGHT SHORES IN THAT ORDER
 typedef std::tuple<int, int, bool> Shore; //CHICKENS, WOLVES AND BOAT IN THAT ORDER
@@ -72,8 +74,8 @@ bool is_valid(Node_State* state){
         return true;
 }
 
-bool already_visited(Node_State* state, std::unordered_set<std::string>* visited){
-    if(visited->find(toString(state)) == visited->end())
+bool already_generated(Node_State* state, std::unordered_set<std::string>* generated){
+    if(generated->find(toString(state)) == generated->end())
         return false;
     else
         return true;
@@ -160,15 +162,15 @@ that checks if a move is valid before adding it to the vector of children
 for the current parent node.
 */
 //takes a node and gives it children that are valid (at most 5 children). children are NODES.Nodes contain a parent, children, and state.
-void expand_node(Node* node, std::unordered_set<std::string>* visited){
+void expand_node(Node* node, std::unordered_set<std::string>* generated){
     Node_State currentState = node->state;
     std::vector<Node*> children();
     Shore currentShore; //tuple of int, int and bool (typedef'd)
     //add the state as a string to the unordered set
-    visited->insert(toString(&currentState));
+    generated->insert(toString(&currentState));
     /*std::unordered_set<std::string>::iterator itr;
 
-    for (itr = visited->begin(); itr != visited->end(); itr++)
+    for (itr = generated->begin(); itr != generated->end(); itr++)
         std::cout << (*itr) << std::endl;*/
     //determine where the boat is
     if(std::get<2>(currentState.first) == 1)
@@ -180,35 +182,46 @@ void expand_node(Node* node, std::unordered_set<std::string>* visited){
 
     //take 1 chicken
     Node_State state1 = move_chickens(&currentState, 1);
-    if(is_valid(&state1) && !already_visited(&state1, visited))
+    if(is_valid(&state1) && !already_generated(&state1, generated)){
         node->children.push_back(create_Node(node, &state1));
+        generated->insert(toString(&state1));
+    }
 
     currentState = node->state; //reset state to current
     //take 2 chickens
     Node_State state2 = move_chickens(&currentState, 2);
-    if(is_valid(&state2) && !already_visited(&state2, visited))
+    if(is_valid(&state2) && !already_generated(&state2, generated)){
         node->children.push_back(create_Node(node, &state2));
+        generated->insert(toString(&state2));
+    }
 
     currentState = node->state;
     //take 1 wolf and 1 chicken
     Node_State state3 = move_chicken_and_wolf(&currentState);
-    if(is_valid(&state3) && !already_visited(&state3, visited))
+    if(is_valid(&state3) && !already_generated(&state3, generated)){
         node->children.push_back(create_Node(node, &state3));
+        generated->insert(toString(&state3));
+    }
     
     currentState = node->state;
     //take 1 wolf
     Node_State state4 = move_wolves(&currentState, 1);
-    if(is_valid(&state4) && !already_visited(&state4, visited))
+    if(is_valid(&state4) && !already_generated(&state4, generated)){
         node->children.push_back(create_Node(node, &state4));
+        generated->insert(toString(&state4));
+    }
     
     currentState = node->state;
     //take 2 wolves
     Node_State state5 = move_wolves(&currentState, 2);
-    if(is_valid(&state5) && !already_visited(&state5, visited))
+    if(is_valid(&state5) && !already_generated(&state5, generated)){
         node->children.push_back(create_Node(node, &state5));
+        generated->insert(toString(&state5));
+    }
     
     currentState = node->state;
     }
+
 
 bool is_win_state(Node_State* state){
     //if there's nothing left on the right shore, then win
@@ -223,25 +236,27 @@ void print_win_path(Node* node){
     if(node->parent != nullptr){
         print_win_path(node->parent);
     }
+    std::cout << "----------------\n";
     print_state(&(node->state));
 }
-//TODO: implement this lol
+
+
 void bfs(Node* root){
-    std::unordered_set<std::string> visited; //initialize hash table
+    std::unordered_set<std::string> generated; //initialize hash table
     std::queue<Node*> queue; //initialize queue
     if(is_win_state(&(root->state))){
         std::cout << "win\n";
         return;
     }
     
-    expand_node(root, &visited);
+    expand_node(root, &generated);
     for(int i = 0; i < root->children.size(); i++){
         queue.push(root->children.at(i));
     }
 
     while(queue.size() != 0){
         print_state(&(queue.front()->state));
-
+        //usleep(100000);
         if(is_win_state(&(queue.front()->state))){
             std::cout << "win\n";
             std::cout << "WIN PATH:\n";
@@ -254,11 +269,51 @@ void bfs(Node* root){
             print_win_path(winNode);
             return;
         }
-        expand_node(queue.front(), &visited);
+        expand_node(queue.front(), &generated);
         for(int i = 0; i < queue.front()->children.size(); i++){
             queue.push(queue.front()->children.at(i));
         }
         queue.pop();
+    }
+    std::cout << "lose\n";
+
+}
+
+
+void dfs(Node* root){
+    std::unordered_set<std::string> generated; //initialize hash table
+    std::stack<Node*> stack; //initialize stack
+    if(is_win_state(&(root->state))){
+        std::cout << "win\n";
+        return;
+    }
+    
+    expand_node(root, &generated);
+    for(int i = 0; i < root->children.size(); i++){
+        stack.push(root->children.at(i));
+    }
+
+    while(stack.size() != 0){
+        print_state(&(stack.top()->state));
+        
+        if(is_win_state(&(stack.top()->state))){
+            std::cout << "win\n";
+            std::cout << "WIN PATH:\n";
+            Node* winNode = stack.top();
+            /*while(winNode != nullptr){
+                std::cout << "-------------\n";
+                print_state(&(winNode->state));
+                winNode = winNode->parent;
+            }*/
+            print_win_path(winNode);
+            return;
+        }
+        expand_node(stack.top(), &generated);
+        for(int i = 0; i < stack.top()->children.size(); i++){
+            stack.push(stack.top()->children.at(i));
+        }
+        //if(already_generated(stack.top()))
+        stack.pop();
     }
     std::cout << "lose\n";
 
@@ -269,7 +324,7 @@ void bfs(Node* root){
     }
     
     Node* newRoot = root->children.at(0);
-    expand_node(newRoot, &visited);
+    expand_node(newRoot, &generated);
 
     std::cout << "new root states:\n";
     for(int i = 0; i < newRoot->children.size(); i++){
@@ -295,19 +350,18 @@ int main(int argc, char* argv[]) {
     initial_state.first = left_bank;
     initial_state.second = right_bank;
 
-    //std::unordered_set<std::string> visited;
+    //std::unordered_set<std::string> generated;
 
     Node* root = new Node{nullptr, std::vector<Node*>(), initial_state};
-    //expand_node(root, &visited);
-    bfs(root);
+    //expand_node(root, &generated);
 
 
     //for different modes
     std::string mode = argv[3];
     if(mode.compare("bfs") == 0){
-        //do BFS
+        bfs(root);
     }else if(mode.compare("dfs") == 0){
-        //do DFS
+        dfs(root);
     }else if(mode.compare("iddfs") == 0){
         //do IDDFS
     }else if(mode.compare("astar") == 0){
