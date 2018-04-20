@@ -468,17 +468,20 @@ void sortQueue(std::queue* Q) {
 void astar(Node* root) {
     std::unordered_set<std::string> generated; //initialize hash table
     std::stack<Node*> openSet;
-    std::queue<Node*> priorityQueue; //initialize queue for astar
+    std::queue<Node> priorityQueue; //initialize queue for astar
     openSet.push(root);
 
     std::unordered_map<std::string, Node> cameFromMap;
     std::unordered_map<std::string, int> depthMap = {{toString(&(root->state)), 0}};
     std::unordered_map<std::string, int> evalMap = {{toString(&(root->state)), heuristic(root)}};
     std::cout << heuristic(root) << std::endl;
+    priorityQueue.push(root);
 
-    /*while (!o penSet.empty()) {
-        node current 
-    }*/
+    while (!openSet.empty()) {
+        sortQueue(&priorityQueue);
+        expand_node(priorityQueue->front(),generated);
+        sort
+    }
 
 
 }
