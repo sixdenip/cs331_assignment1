@@ -406,7 +406,11 @@ void limited_dfs(Node* root, int* depth){
                 set_node_depth(stack.top()->children.at(i), &depthMap);
                 stack.push(stack.top()->children.at(i));
             }
-        }else{
+        }
+        else if(toString(&(stack.top()->state)).compare(toString(&(root->state))) == 0){
+            std::cout << "lose\n";
+            return;}
+        else{
             std::vector<Node*>::iterator pos = std::find(stack.top()->parent->children.begin(), stack.top()->parent->children.end(),stack.top());
             stack.top()->parent->children.erase(pos); //remove the element from its parents child list
             free(stack.top());
