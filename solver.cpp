@@ -291,7 +291,7 @@ void bfs(Node* root){
 }
 
 //depth first search
-void dfs(Node* root){
+void dfs(Node* root) {
     std::unordered_set<std::string> generated; //initialize hash table
     std::stack<Node*> stack; //initialize stack
     if(is_win_state(&(root->state))){
@@ -374,7 +374,7 @@ void limited_dfs(Node* root, int* depth){
     }
 
     for(int i = 0; i < root->children.size(); i++){
-        set_node_depth(root->children.at(i), &depthMap);
+        set_node_depth(stack.top()->children.at(i), &depthMap);
         stack.push(root->children.at(i));
     }
     int numExpanded = 1; //already expanded root
@@ -388,7 +388,7 @@ void limited_dfs(Node* root, int* depth){
             Node* winNode = stack.top();
             print_win_path(winNode);
             std::cout << numExpanded << "\n";
-            exit(0);
+            return;
         }
         for(auto& p: depthMap)
             std::cout << " " << p.first << " => " << p.second << '\n';
@@ -431,10 +431,62 @@ void iddfs(Node* root, int* maxDepth){
     }
 }
 
+
+
+int heuristic(Node* currentNode) {
+    Node_State state = currentNode->state;
+    return (abs(get_num_chickens(goal_state.first) - get_num_chickens(state.first)) + abs(  get_num_wolves(goal_state.first) - get_num_wolves(state.first)) + abs(has_boat(goal_state.first) - has_boat(state.first)));
+}
+
+void set_node_eval(Node* node, std::unordered_map<std::string, Node>* eval, std::unordered_map<std::string, int>* depthMap) {
+    eval->insert({toString(&(node->state)), heuristic(node) + get_node_depth(node,depthMap)});
+}
+
+int get_node_eval(Node* node, std::unordered_map<std::string, Node>* evalMap) {
+    std::unordered_map<std::string, Node>::iterator search = evalMap->find(toString(&(node->state)));
+    return std::get<1>(search->second);
+}
+
+void sortQueue(std::queue* Q) {
+    int cmp(Node* n1, Node* n2) {
+        return get_node_eval(n1) > get_node_eval(n2);   
+    }
+
+    std::vector<Node*>::iterator v;
+    while(Q.isEmpty() == false) {   
+        v.push_back(*Q.top());
+        Q.dequeue();
+    }
+
+    sort(v.begin(), v.end(), cmp);
+
+    for(int i = 0; i < v.size(); i++) {
+        Q.enqueue(v[i].time, v[i].name, v[i].value);
+    }
+}
+
+void astar(Node* root) {
+    std::unordered_set<std::string> generated; //initialize hash table
+    std::stack<Node*> openSet;
+    std::queue<Node*> priorityQueue; //initialize queue for astar
+    openSet.push(root);
+
+    std::unordered_map<std::string, Node> cameFromMap;
+    std::unordered_map<std::string, int> depthMap = {{toString(&(root->state)), 0}};
+    std::unordered_map<std::string, int> evalMap = {{toString(&(root->state)), heuristic(root)}};
+    std::cout << heuristic(root) << std::endl;
+
+    /*while (!o penSet.empty()) {
+        node current 
+    }*/
+
+
+}
+
 int main(int argc, char* argv[]) {
 
     if (argc < 5) {
-        std::cout << "Usage : < initial state file > < goal state file > < mode > < output file > " << std::endl;
+        std::cout << "Usage : <initial state file> <goal state file> <mode> <output file> " << std::endl;
         return 0;
     }
 
@@ -468,9 +520,9 @@ int main(int argc, char* argv[]) {
     }else if(mode.compare("dfs") == 0){
         dfs(root);
     }else if(mode.compare("iddfs") == 0){
-        int maxDepth = 3000;
+        int maxDepth = 30;
         iddfs(root, &maxDepth);
     }else if(mode.compare("astar") == 0){
-        //DO ASTAR
+        astar(root);
     }
 }
