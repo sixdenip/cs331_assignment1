@@ -388,7 +388,7 @@ void limited_dfs(Node* root, int* depth){
             Node* winNode = stack.top();
             print_win_path(winNode);
             std::cout << numExpanded << "\n";
-            return;
+            exit(0);
         }
         for(auto& p: depthMap)
             std::cout << " " << p.first << " => " << p.second << '\n';
@@ -468,7 +468,7 @@ int main(int argc, char* argv[]) {
     }else if(mode.compare("dfs") == 0){
         dfs(root);
     }else if(mode.compare("iddfs") == 0){
-        int maxDepth = 30;
+        int maxDepth = 3000;
         iddfs(root, &maxDepth);
     }else if(mode.compare("astar") == 0){
         //DO ASTAR
