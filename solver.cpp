@@ -432,55 +432,77 @@ void iddfs(Node* root, int* maxDepth){
 }
 
 
-
 int heuristic(Node* currentNode) {
     Node_State state = currentNode->state;
     return (abs(get_num_chickens(goal_state.first) - get_num_chickens(state.first)) + abs(  get_num_wolves(goal_state.first) - get_num_wolves(state.first)) + abs(has_boat(goal_state.first) - has_boat(state.first)));
 }
 
-void set_node_eval(Node* node, std::unordered_map<std::string, Node>* eval, std::unordered_map<std::string, int>* depthMap) {
+void set_node_eval(Node* node, std::unordered_map<std::string, int>* eval, std::unordered_map<std::string, int>* depthMap) {
     eval->insert({toString(&(node->state)), heuristic(node) + get_node_depth(node,depthMap)});
 }
 
-int get_node_eval(Node* node, std::unordered_map<std::string, Node>* evalMap) {
-    std::unordered_map<std::string, Node>::iterator search = evalMap->find(toString(&(node->state)));
-    return std::get<1>(search->second);
+int get_node_eval(Node* node, std::unordered_map<std::string, int>* evalMap) {
+    std::unordered_map<std::string, int>::iterator search = evalMap->find(toString(&(node->state)));
+    return search->second;
 }
 
-void sortQueue(std::queue* Q) {
-    int cmp(Node* n1, Node* n2) {
-        return get_node_eval(n1) > get_node_eval(n2);   
-    }
+std::unordered_map<std::string, int> evalMap;
 
-    std::vector<Node*>::iterator v;
-    while(Q.isEmpty() == false) {   
-        v.push_back(*Q.top());
-        Q.dequeue();
+struct compare
+{
+    bool operator() (Node n1, Node n2)
+    {
+        return get_node_eval(&n1, &evalMap) > get_node_eval(&n2, &evalMap);
     }
+};
 
-    sort(v.begin(), v.end(), cmp);
-
-    for(int i = 0; i < v.size(); i++) {
-        Q.enqueue(v[i].time, v[i].name, v[i].value);
+void showpq(std::priority_queue <Node, std::vector<Node>, compare> gq)
+{
+    std::priority_queue<Node, std::vector<Node>, compare> g = gq;
+    while (!g.empty())
+    {
+        std::cout << '\t' << toString(const_cast<Node_State*>(&(g.top()).state));
+        g.pop();
     }
+    std::cout << '\n';
 }
+ 
 
 void astar(Node* root) {
-    std::unordered_set<std::string> generated; //initialize hash table
-    std::stack<Node*> openSet;
-    std::queue<Node> priorityQueue; //initialize queue for astar
-    openSet.push(root);
-
-    std::unordered_map<std::string, Node> cameFromMap;
+    std::unordered_set<std::string> children; //initialize hash table
+    std::unordered_set<std::string> closedSet; //
+    std::unordered_set<std::string> openSet;
+    std::priority_queue<Node, std::vector<Node>, compare> priorityQueue; //initialize queue for astar
     std::unordered_map<std::string, int> depthMap = {{toString(&(root->state)), 0}};
-    std::unordered_map<std::string, int> evalMap = {{toString(&(root->state)), heuristic(root)}};
-    std::cout << heuristic(root) << std::endl;
-    priorityQueue.push(root);
+    evalMap = {{toString(&(root->state)), heuristic(root)}};
+    priorityQueue.push(*root);
+    std::cout << heuristic(root) << "\n" << std::endl;
+    print_state(const_cast<Node_State*>(&(priorityQueue.top()).state));
+    openSet.insert(toString(const_cast<Node_State*>(&(priorityQueue.top()).state)));
 
     while (!openSet.empty()) {
-        sortQueue(&priorityQueue);
-        expand_node(priorityQueue->front(),generated);
-        sort
+        Node current = priorityQueue.top();
+        print_state(&(current.state));
+        showpq(priorityQueue); 
+        if (is_win_state(&(current.state))) {
+            print_win_path(&current);
+            exit;
+        }
+        openSet.erase(toString(&(current.state)));
+        closedSet.insert(toString(&(current.state)));
+        expand_node(&current, &children);
+        for(int i = 0; i < current.children.size(); i++){ //add its children to the queue.
+            set_node_depth(current.children.at(i), &depthMap);
+            set_node_eval(current.children.at(i), &evalMap, &depthMap);
+            priorityQueue.push(*current.children.at(i));
+        }
+        for (const auto& child: children) {
+            if (closedSet.find(child) != closedSet.end())
+                continue;
+            if (openSet.find(child) == openSet.end()) {
+                openSet.insert(child);
+            }
+        }
     }
 
 
