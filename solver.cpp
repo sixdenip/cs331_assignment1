@@ -19,6 +19,7 @@ typedef std::tuple<int, int, bool> Shore; //CHICKENS, WOLVES AND BOAT IN THAT OR
 typedef struct Node Node;
 
 //game state is a pair of tuples, where each tuple is the number of chickens, wolves and if the boat is on that shore or not. a pair: 1 tuple for each shore.
+Node_State goal_state; 
 
 struct Node{
     Node* parent;
@@ -227,10 +228,15 @@ void expand_node(Node* node, std::unordered_set<std::string>* generated){
 //checks if a given state is a winning state.
 bool is_win_state(Node_State* state){
     //if there's nothing left on the right shore, then win
-    if(get_num_wolves(state->second) == 0 && get_num_chickens(state->second) == 0)
+    /*if(get_num_wolves(state->second) == 0 && get_num_chickens(state->second) == 0)
         return true;
     else
-        return false; 
+        return false;*/
+    if(get_num_chickens(state->first) == get_num_chickens(goal_state.first) && get_num_wolves(state->first) == get_num_wolves(goal_state.first)
+        && get_num_chickens(state->second) == get_num_chickens(goal_state.second) && get_num_wolves(state->second) == get_num_wolves(goal_state.second))
+        return true;
+    else
+        return false;
 }
 
 //recursively print out the win path (starting from winning node and printing the parents of each of parent recursively)
@@ -324,6 +330,10 @@ void dfs(Node* root){
             for(int i = 0; i < stack.top()->children.size(); i++){
                 stack.push(stack.top()->children.at(i));
             }
+        }
+        else if(toString(&(stack.top()->state)).compare(toString(&(root->state))) == 0){
+            std::cout << "lose\n";
+            return;
         }else{
             std::vector<Node*>::iterator pos = std::find(stack.top()->parent->children.begin(), stack.top()->parent->children.end(),stack.top());
             stack.top()->parent->children.erase(pos); //remove the element from its parents child list
@@ -422,6 +432,8 @@ int main(int argc, char* argv[]) {
         std::cout << "Usage : < initial state file > < goal state file > < mode > < output file > " << std::endl;
         return 0;
     }
+
+    //get initial state
     std::vector<int> values = read_file(argv[1]);
 
     Shore left_bank = std::make_tuple(values.at(0), values.at(1), !!values.at(2));
@@ -430,6 +442,17 @@ int main(int argc, char* argv[]) {
     Node_State initial_state; 
     initial_state.first = left_bank;
     initial_state.second = right_bank;
+    //
+
+    //get goal state
+    values = read_file(argv[2]);
+
+    left_bank = std::make_tuple(values.at(0), values.at(1), !!values.at(2));
+    right_bank = std::make_tuple(values.at(3), values.at(4), !!values.at(5));
+    
+    goal_state.first = left_bank;
+    goal_state.second = right_bank;
+    //
 
     Node* root = new Node{nullptr, std::vector<Node*>(), initial_state};
 
