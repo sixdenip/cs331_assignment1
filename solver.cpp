@@ -374,6 +374,7 @@ void limited_dfs(Node* root, int* depth){
     }
 
     for(int i = 0; i < root->children.size(); i++){
+        set_node_depth(root->children.at(i), &depthMap);
         stack.push(root->children.at(i));
     }
     int numExpanded = 1; //already expanded root
@@ -467,7 +468,7 @@ int main(int argc, char* argv[]) {
     }else if(mode.compare("dfs") == 0){
         dfs(root);
     }else if(mode.compare("iddfs") == 0){
-        int maxDepth = 10;
+        int maxDepth = 30;
         iddfs(root, &maxDepth);
     }else if(mode.compare("astar") == 0){
         //DO ASTAR
