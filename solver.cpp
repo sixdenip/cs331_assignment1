@@ -12,14 +12,19 @@
 #include <string>
 #include <stack>
 #include <map>
+
 //#include <unistd.h>
+
+//compile with g** -std=c++11 solver.cpp -o solver
+//run with ./solver <parameters as specified in assignment>
 
 typedef std::pair<std::tuple<int, int, bool>, std::tuple<int, int, bool>> Node_State; //LEFT AND RIGHT SHORES IN THAT ORDER
 typedef std::tuple<int, int, bool> Shore; //CHICKENS, WOLVES AND BOAT IN THAT ORDER
 typedef struct Node Node;
 
 //game state is a pair of tuples, where each tuple is the number of chickens, wolves and if the boat is on that shore or not. a pair: 1 tuple for each shore.
-Node_State goal_state; 
+Node_State goal_state;
+std::string outputFile;
 
 struct Node{
     Node* parent;
@@ -227,11 +232,6 @@ void expand_node(Node* node, std::unordered_set<std::string>* generated){
 
 //checks if a given state is a winning state.
 bool is_win_state(Node_State* state){
-    //if there's nothing left on the right shore, then win
-    /*if(get_num_wolves(state->second) == 0 && get_num_chickens(state->second) == 0)
-        return true;
-    else
-        return false;*/
     if(get_num_chickens(state->first) == get_num_chickens(goal_state.first) && get_num_wolves(state->first) == get_num_wolves(goal_state.first)
         && get_num_chickens(state->second) == get_num_chickens(goal_state.second) && get_num_wolves(state->second) == get_num_wolves(goal_state.second))
         return true;
@@ -240,12 +240,25 @@ bool is_win_state(Node_State* state){
 }
 
 //recursively print out the win path (starting from winning node and printing the parents of each of parent recursively)
-void print_win_path(Node* node){
+void print_win_path(Node* node, std::string* path){
     if(node->parent != nullptr){
-        print_win_path(node->parent);
+        print_win_path(node->parent, path);
     }
-    std::cout << "----------------\n";
-    print_state(&(node->state));
+    //std::cout << "----------------\n";
+    //print_state(&(node->state));
+    *path += "----------------\nLeft bank: " + std::to_string(std::get<0>((&(node->state))->first)) + " " + std::to_string(std::get<1>((&(node->state))->first)) + " " 
+    + std::to_string(std::get<2>((&(node->state))->first)) + "\n" 
+    + "Right bank: " + std::to_string(std::get<0>((&(node->state))->second)) + " " + std::to_string(std::get<1>((&(node->state))->second)) + " " 
+    + std::to_string(std::get<2>((&(node->state))->second)) + "\n"; 
+}
+
+int getDepth(Node node){
+    int depth = 1;
+    while(node.parent != nullptr){
+        node = *(node.parent);
+        depth++;
+    }
+    return depth;
 }
 
 //depth first search.
@@ -256,7 +269,7 @@ void bfs(Node* root){
         std::cout << "Initial state is already a win state.\n";
         return;
     }
-    print_state(&(root->state)); //print states. could remove when done. Mostly for testing
+    //print_state(&(root->state)); //print states. could remove when done. Mostly for testing
 
     expand_node(root, &generated); //expands the node root. this populates root's children vector with valid Node* s.
     for(int i = 0; i < root->children.size(); i++){ //add its children to the queue.
@@ -264,19 +277,21 @@ void bfs(Node* root){
     }
     int numExpanded = 1; //already expanded root. To keep track of number of nodes expanded as per the assignment instructions.
     while(queue.size() != 0){
-        print_state(&(queue.front()->state));
+        //print_state(&(queue.front()->state));
         //usleep(100000);
         if(is_win_state(&(queue.front()->state))){ //check if the current front of the queue is a winning state.
             std::cout << "Winnable!\n";
             std::cout << "WIN PATH:\n";
             Node* winNode = queue.front();
-            /*while(winNode != nullptr){
-                std::cout << "-------------\n";
-                print_state(&(winNode->state));
-                winNode = winNode->parent;
-            }*/
-            print_win_path(winNode); //start printing the win path
-            std::cout << numExpanded << "\n"; //says how many nodes were expanded
+            int depth = getDepth(*winNode);
+            std::string path = "";
+            print_win_path(winNode, &path); //start printing the win path
+            std::cout << "nodes expanded: " << numExpanded << "\n"; //says how many nodes were expanded
+            std::cout << path;
+
+            FILE* fd = fopen(outputFile.c_str(), "w");
+            fprintf(fd, "WIN PATH:\n%s\nNumber of nodes expanded: %d\nDepth of solution: %d", path.c_str(), numExpanded, depth);
+            fclose(fd);
             return;
         }
         expand_node(queue.front(), &generated); //if the front is not a winning state, expand it.
@@ -287,18 +302,19 @@ void bfs(Node* root){
         queue.pop(); //remove front of queue so that in the next loop the front is updated.
     }
     std::cout << "lose\n";
+    std::cout << "nodes expanded: " << numExpanded << "\n";
 
 }
 
 //depth first search
-void dfs(Node* root) {
+void dfs(Node* root){
     std::unordered_set<std::string> generated; //initialize hash table
     std::stack<Node*> stack; //initialize stack
     if(is_win_state(&(root->state))){
         std::cout << "win\n";
         return;
     }
-    print_state(&(root->state));
+    //print_state(&(root->state));
     stack.push(root);
     expand_node(root, &generated);
     for(int i = 0; i < root->children.size(); i++){
@@ -313,13 +329,15 @@ void dfs(Node* root) {
             std::cout << "win\n";
             std::cout << "WIN PATH:\n";
             Node* winNode = stack.top();
-            /*while(winNode != nullptr){
-                std::cout << "-------------\n";
-                print_state(&(winNode->state));
-                winNode = winNode->parent;
-            }*/
-            print_win_path(winNode);
-            std::cout << numExpanded << "\n";
+            int depth = getDepth(*winNode);
+            std::string path = "";
+            print_win_path(winNode, &path);
+            std::cout << "nodes expanded: " << numExpanded << "\n";
+            std::cout << path;
+
+            FILE* fd = fopen(outputFile.c_str(), "w");
+            fprintf(fd, "WIN PATH:\n%s\nNumber of nodes expanded: %d\nDepth of solution: %d", path.c_str(), numExpanded, depth);
+            fclose(fd);            
             return;
         }
         expand_node(stack.top(), &generated);
@@ -333,6 +351,7 @@ void dfs(Node* root) {
         }
         else if(toString(&(stack.top()->state)).compare(toString(&(root->state))) == 0){
             std::cout << "lose\n";
+            std::cout << "nodes expanded: " << numExpanded << "\n";
             return;
         }else{
             std::vector<Node*>::iterator pos = std::find(stack.top()->parent->children.begin(), stack.top()->parent->children.end(),stack.top());
@@ -342,6 +361,7 @@ void dfs(Node* root) {
         }
     }
     std::cout << "lose\n";
+    std::cout << "nodes expanded: " << numExpanded << "\n";
 }
 
 void set_node_depth(Node* node, std::unordered_map<std::string, int>* depthMap){
@@ -354,52 +374,52 @@ int get_node_depth(Node* node, std::unordered_map<std::string, int>* depthMap){
     return search->second;
 }
 
-void limited_dfs(Node* root, int* depth){
+void limited_dfs(Node* root, int* depth, int* numExpanded){
     std::unordered_set<std::string> generated; //initialize hash table
     std::stack<Node*> stack; //initialize stack
-    std::cout << "ok\n";
     std::unordered_map<std::string, int> depthMap = {{toString(&(root->state)), 0}}; //hash map to store toString of states and their depth.
                                                     //can use states because each node has a unique state.
     if(is_win_state(&(root->state))){
-        std::cout << "win\n";
         return;
     }
     print_state(&(root->state));
-    std::cout << "ok 2\n";
     stack.push(root);
     //depthMap.insert({toString(&(root->state)), 0});
     if(get_node_depth(root, &depthMap) <= *depth){
         expand_node(root, &generated);
-        std::cout << "root depth ok\n";
     }
 
     for(int i = 0; i < root->children.size(); i++){
-        set_node_depth(stack.top()->children.at(i), &depthMap);
+        set_node_depth(root->children.at(i), &depthMap);
         stack.push(root->children.at(i));
     }
-    int numExpanded = 1; //already expanded root
+    //int numExpanded = 1; //already expanded root
     while(stack.size() != 0){
 
-        print_state(&(stack.top()->state));
+        //print_state(&(stack.top()->state));
         
         if(is_win_state(&(stack.top()->state))){
             std::cout << "win\n";
             std::cout << "WIN PATH:\n";
             Node* winNode = stack.top();
-            print_win_path(winNode);
-            std::cout << numExpanded << "\n";
-            return;
-        }
-        for(auto& p: depthMap)
-            std::cout << " " << p.first << " => " << p.second << '\n';
-        std::cout << "good here\n";
-        if(get_node_depth(stack.top(), &depthMap) < *depth)  {
-            std::cout << "good here2\n";
-            std::cout << get_node_depth(stack.top(), &depthMap) << "\n";  
-            expand_node(stack.top(), &generated);
-            numExpanded++;
-        }
+            int depth = getDepth(*winNode);
+            std::string path = "";
+            print_win_path(winNode, &path);
+            std::cout << "nodes expanded: " << *numExpanded << "\n";
+            std::cout << path;
 
+            FILE* fd = fopen(outputFile.c_str(), "w");
+            fprintf(fd, "WIN PATH:\n%s\nNumber of nodes expanded: %d\nDepth of solution: %d", path.c_str(), *numExpanded, depth);
+            fclose(fd);
+            exit(0);
+        }
+        //for(auto& p: depthMap)
+            //std::cout << " " << p.first << " => " << p.second << '\n';
+        if(get_node_depth(stack.top(), &depthMap) < *depth)  {
+            //std::cout << get_node_depth(stack.top(), &depthMap) << "\n";  
+            expand_node(stack.top(), &generated);
+            (*numExpanded)++;
+        }
         int numChildren = stack.top()->children.size();
 
         if(numChildren != 0){
@@ -410,6 +430,7 @@ void limited_dfs(Node* root, int* depth){
         }
         else if(toString(&(stack.top()->state)).compare(toString(&(root->state))) == 0){
             std::cout << "lose\n";
+            std::cout << "nodes expanded: " << *numExpanded << "\n";
             return;}
         else{
             std::vector<Node*>::iterator pos = std::find(stack.top()->parent->children.begin(), stack.top()->parent->children.end(),stack.top());
@@ -419,18 +440,19 @@ void limited_dfs(Node* root, int* depth){
         }
     }
     std::cout << "lose\n";
+    std::cout << "nodes expanded: " << *numExpanded << "\n";
     generated.clear();
     stack.empty();
     depthMap.empty();
 }
 
 void iddfs(Node* root, int* maxDepth){
+    int numExpanded = 1;
     for(int depth = 1; depth < *maxDepth; depth++){
-        limited_dfs(root, &depth);
+        limited_dfs(root, &depth, &numExpanded);
         std::cout << "end iteration\n";
     }
 }
-
 
 int heuristic(Node* currentNode) {
     Node_State state = currentNode->state;
@@ -485,24 +507,27 @@ void astar(Node* root) {
         print_state(&(current.state));
         showpq(priorityQueue); 
         if (is_win_state(&(current.state))) {
-            print_win_path(&current);
+            std::string path = "";
+            print_win_path(&current, &path);
             exit;
         }
-        openSet.erase(toString(&(current.state)));
-        closedSet.insert(toString(&(current.state)));
+        //openSet.erase(toString(&(current.state)));
+        //closedSet.insert(toString(&(current.state)));
         expand_node(&current, &children);
         for(int i = 0; i < current.children.size(); i++){ //add its children to the queue.
             set_node_depth(current.children.at(i), &depthMap);
             set_node_eval(current.children.at(i), &evalMap, &depthMap);
             priorityQueue.push(*current.children.at(i));
         }
-        for (const auto& child: children) {
+        /*for (const auto& child: children) {
             if (closedSet.find(child) != closedSet.end())
                 continue;
             if (openSet.find(child) == openSet.end()) {
                 openSet.insert(child);
             }
-        }
+        }*/
+        priorityQueue.pop();
+        
     }
 
 
@@ -511,7 +536,7 @@ void astar(Node* root) {
 int main(int argc, char* argv[]) {
 
     if (argc < 5) {
-        std::cout << "Usage : <initial state file> <goal state file> <mode> <output file> " << std::endl;
+        std::cout << "Usage : < initial state file > < goal state file > < mode > < output file > " << std::endl;
         return 0;
     }
 
@@ -538,6 +563,7 @@ int main(int argc, char* argv[]) {
 
     Node* root = new Node{nullptr, std::vector<Node*>(), initial_state};
 
+    outputFile = argv[4];
     //for different modes
     std::string mode = argv[3];
     if(mode.compare("bfs") == 0){
@@ -545,7 +571,7 @@ int main(int argc, char* argv[]) {
     }else if(mode.compare("dfs") == 0){
         dfs(root);
     }else if(mode.compare("iddfs") == 0){
-        int maxDepth = 30;
+        int maxDepth = 5000;
         iddfs(root, &maxDepth);
     }else if(mode.compare("astar") == 0){
         astar(root);
